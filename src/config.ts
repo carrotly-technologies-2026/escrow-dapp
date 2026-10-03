@@ -13,3 +13,7 @@ export const explorerTx = (signature: string) =>
   `https://explorer.solana.com/tx/${signature}?cluster=devnet`;
 export const explorerAddress = (address: string) =>
   `https://explorer.solana.com/address/${address}?cluster=devnet`;
+
+/** Wallet that receives shop orders; defaults to the demo seller wallet. */
+export const SHOP_SELLER = (import.meta.env.VITE_SHOP_SELLER ??
+  "7oT6f8Pv4fEoqKWDsdSenJs77AMR5dB9bCNJ7DYvEqsv") as Address;

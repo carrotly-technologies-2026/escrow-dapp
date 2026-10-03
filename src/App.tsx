@@ -4,10 +4,12 @@ import { isAddress } from "@solana/kit";
 import { CreateEscrow } from "./pages/CreateEscrow";
 import { EscrowDetail } from "./pages/EscrowDetail";
 import { EscrowList } from "./pages/EscrowList";
+import { Shop } from "./pages/Shop";
 import { Button, Card } from "./ui";
 import type { Role } from "./lib/escrow";
 
 const TABS: { hash: string; label: string }[] = [
+  { hash: "#/sklep", label: "Sklep HackYeah" },
   { hash: "#/", label: "Moje transakcje" },
   { hash: "#/new", label: "Nowa transakcja" },
   { hash: "#/arbiter", label: "Panel arbitra" },
@@ -32,8 +34,14 @@ export default function App() {
   const escrowMatch = hash.match(/^#\/escrow\/([1-9A-HJ-NP-Za-km-z]{32,44})$/);
 
   let page;
+  const openEscrow = (escrow: string) =>
+    (window.location.hash = `#/escrow/${escrow}`);
+
   if (escrowMatch && isAddress(escrowMatch[1])) {
     page = <EscrowDetail address={escrowMatch[1]} />;
+  } else if (hash === "#/sklep") {
+    // The shop is browsable without a wallet; checkout asks to connect one.
+    page = <Shop onOrdered={openEscrow} />;
   } else if (!me) {
     page = (
       <Card title="Jak to działa">
@@ -59,16 +67,16 @@ export default function App() {
           </li>
         </ol>
         <p className="text-sm text-muted">
-          Podłącz portfel (devnet), aby zacząć.
+          Podłącz portfel (devnet), aby zacząć — albo zajrzyj do{" "}
+          <a className="underline" href="#/sklep">
+            sklepu HackYeah
+          </a>
+          , który płaci przez escrow.
         </p>
       </Card>
     );
   } else if (hash === "#/new") {
-    page = (
-      <CreateEscrow
-        onCreated={(escrow) => (window.location.hash = `#/escrow/${escrow}`)}
-      />
-    );
+    page = <CreateEscrow onCreated={openEscrow} />;
   } else if (hash === "#/arbiter") {
     page = <EscrowList wallet={me} role="arbiter" />;
   } else {
@@ -118,19 +126,17 @@ export default function App() {
             </div>
           )}
         </header>
-        {me && (
-          <nav className="flex flex-wrap gap-2 text-sm">
-            {TABS.map((t) => (
-              <a
-                key={t.hash}
-                href={t.hash}
-                className={`rounded-full px-4 py-1.5 ${hash === t.hash ? "bg-foreground text-background" : "bg-cream"}`}
-              >
-                {t.label}
-              </a>
-            ))}
-          </nav>
-        )}
+        <nav className="flex flex-wrap gap-2 text-sm">
+          {TABS.map((t) => (
+            <a
+              key={t.hash}
+              href={t.hash}
+              className={`rounded-full px-4 py-1.5 ${hash === t.hash ? "bg-foreground text-background" : "bg-cream"}`}
+            >
+              {t.label}
+            </a>
+          ))}
+        </nav>
         {page}
       </main>
     </div>

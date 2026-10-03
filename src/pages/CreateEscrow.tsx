@@ -1,37 +1,21 @@
 import { useState, type FormEvent } from "react";
 import { address, isAddress, type Address } from "@solana/kit";
-import { findEscrowPda, getCreateEscrowInstruction } from "../generated/escrow";
 import { DEFAULT_ARBITER } from "../config";
-import { saveDetails } from "../lib/backend";
-import { detailsHash, parseSol } from "../lib/escrow";
-import { useEscrowTx } from "../lib/useEscrowTx";
+import { parseSol } from "../lib/escrow";
+import {
+  PRESETS,
+  formatPeriod,
+  useCreateEscrow,
+  type Preset,
+} from "../lib/useCreateEscrow";
 import { Button, Card, Field, TxResult, inputClass } from "../ui";
-
-const MIN = 60;
-const DAY = 24 * 60 * MIN;
-
-// Demo uses minutes so timeouts can be shown live; real deals use days.
-const PRESETS = {
-  demo: {
-    label: "Demo (minuty)",
-    ship: 5 * MIN,
-    confirm: 3 * MIN,
-    arbiter: 3 * MIN,
-  },
-  normal: {
-    label: "Standard (dni)",
-    ship: 3 * DAY,
-    confirm: 7 * DAY,
-    arbiter: 7 * DAY,
-  },
-} as const;
 
 export function CreateEscrow({
   onCreated,
 }: {
   onCreated: (escrow: Address) => void;
 }) {
-  const { run, signer, isSending, signature, error } = useEscrowTx();
+  const { create, signer, isSending, signature, error } = useCreateEscrow();
   const [form, setForm] = useState({
     seller: "",
     arbiter: DEFAULT_ARBITER as string,
@@ -39,7 +23,7 @@ export function CreateEscrow({
     itemTitle: "",
     recipientName: "",
     recipientAddress: "",
-    preset: "demo" as keyof typeof PRESETS,
+    preset: "demo" as Preset,
   });
   const [problem, setProblem] = useState<string | null>(null);
   const set = (key: keyof typeof form) => (e: { target: { value: string } }) =>
@@ -48,7 +32,6 @@ export function CreateEscrow({
   async function submit(e: FormEvent) {
     e.preventDefault();
     setProblem(null);
-    if (!signer) return;
     if (!isAddress(form.seller) || !isAddress(form.arbiter)) {
       setProblem(
         "Adres sprzedającego i arbitra musi być poprawnym adresem portfela Solana."
@@ -60,40 +43,14 @@ export function CreateEscrow({
       setProblem("Podaj kwotę większą od zera.");
       return;
     }
-
-    const details = {
-      itemTitle: form.itemTitle.trim(),
-      recipientName: form.recipientName.trim(),
-      recipientAddress: form.recipientAddress.trim(),
-    };
-    const preset = PRESETS[form.preset];
-    const escrowId = BigInt(Date.now());
-    const [escrow] = await findEscrowPda({ buyer: signer.address, escrowId });
-    const now = Math.floor(Date.now() / 1000);
-
-    const sig = await run(async (buyer) =>
-      getCreateEscrowInstruction({
-        buyer,
-        escrow,
-        escrowId,
-        seller: address(form.seller),
-        arbiter: address(form.arbiter),
-        amount,
-        shipDeadline: BigInt(now + preset.ship),
-        confirmWindow: BigInt(preset.confirm),
-        arbiterWindow: BigInt(preset.arbiter),
-        detailsHash: await detailsHash(details),
-      })
-    );
-    if (!sig) return;
-
-    // The escrow is already live on-chain; the description is only a convenience copy.
-    try {
-      await saveDetails(escrow, details);
-    } catch (err) {
-      console.error(err);
-    }
-    onCreated(escrow);
+    const escrow = await create({
+      seller: address(form.seller),
+      arbiter: address(form.arbiter),
+      amount,
+      details: form,
+      preset: form.preset,
+    });
+    if (escrow) onCreated(escrow);
   }
 
   if (!signer)
@@ -103,6 +60,7 @@ export function CreateEscrow({
       </Card>
     );
 
+  const preset = PRESETS[form.preset];
   return (
     <Card title="Nowa bezpieczna transakcja (kupujący)">
       <p className="text-sm text-muted">
@@ -171,7 +129,7 @@ export function CreateEscrow({
         </Field>
         <Field
           label="Terminy"
-          hint={`Wysyłka: ${fmt(PRESETS[form.preset].ship)}, potwierdzenie odbioru: ${fmt(PRESETS[form.preset].confirm)}, decyzja arbitra: ${fmt(PRESETS[form.preset].arbiter)}.`}
+          hint={`Wysyłka: ${formatPeriod(preset.ship)}, potwierdzenie odbioru: ${formatPeriod(preset.confirm)}, decyzja arbitra: ${formatPeriod(preset.arbiter)}.`}
         >
           <select
             className={inputClass}
@@ -195,8 +153,4 @@ export function CreateEscrow({
       <TxResult signature={signature} error={error} />
     </Card>
   );
-}
-
-function fmt(secs: number) {
-  return secs >= DAY ? `${secs / DAY} dni` : `${secs / MIN} min`;
 }
