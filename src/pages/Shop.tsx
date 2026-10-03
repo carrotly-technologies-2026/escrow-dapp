@@ -5,12 +5,10 @@ import { formatSol, LAMPORTS_PER_SOL } from "../lib/escrow";
 import { useCreateEscrow } from "../lib/useCreateEscrow";
 import { TxResult } from "../ui";
 
-type Kind = "tshirt" | "hoodie" | "mug" | "cap" | "tote" | "stickers";
 type Product = {
   id: string;
   name: string;
-  kind: Kind;
-  color: string;
+  image: string;
   price: bigint;
   description: string;
   sizes?: string[];
@@ -24,54 +22,51 @@ const PRODUCTS: Product[] = [
   {
     id: "tee",
     name: "Koszulka HackYeah 2026",
-    kind: "tshirt",
-    color: "#7c3aed",
+    image: "/products/tee.jpg",
     price: SOL(0.1),
     sizes: CLOTHES,
     description:
-      "Gruba bawełna, luźny krój i logo HY26 na piersi. Przetrwa 24 godziny kodowania.",
+      "Gruba bawełna, luźny krój i małe logo na piersi. Przetrwa 24 godziny kodowania.",
   },
   {
-    id: "hoodie",
+    id: "sweatshirt",
     name: "Bluza HackYeah",
-    kind: "hoodie",
-    color: "#1f2937",
+    image: "/products/sweatshirt.jpg",
     price: SOL(0.3),
     sizes: CLOTHES,
     description:
-      "Ciepła bluza z kapturem na nocne debugowanie. Kieszeń mieści laptopa… prawie.",
+      "Ciepła bluza oversize na nocne debugowanie. Miękka w środku, sprana na zewnątrz.",
+  },
+  {
+    id: "sweatpants",
+    name: "Spodnie dresowe HackYeah",
+    image: "/products/sweatpants.jpg",
+    price: SOL(0.2),
+    sizes: CLOTHES,
+    description:
+      "Wygodne dresy na całą noc przy laptopie. Ściągacze przy kostkach, dwie kieszenie.",
   },
   {
     id: "mug",
     name: "Kubek „Deploy w piątek”",
-    kind: "mug",
-    color: "#db2777",
+    image: "/products/mug.jpg",
     price: SOL(0.05),
     description: "Ceramiczny kubek 330 ml. Na kawę przed deployem i melisę po.",
   },
   {
     id: "cap",
     name: "Czapka HackYeah",
-    kind: "cap",
-    color: "#0ea5e9",
+    image: "/products/cap.jpg",
     price: SOL(0.08),
-    description: "Bawełniana czapka z daszkiem i regulowanym paskiem.",
-  },
-  {
-    id: "tote",
-    name: "Torba HackYeah",
-    kind: "tote",
-    color: "#16a34a",
-    price: SOL(0.06),
-    description: "Płócienna torba na laptopa, ładowarki i darmowe naklejki.",
+    description: "Sprana bawełniana czapka z daszkiem i regulowanym paskiem.",
   },
   {
     id: "stickers",
-    name: "Paczka naklejek",
-    kind: "stickers",
-    color: "#f59e0b",
+    name: "Naklejka holograficzna",
+    image: "/products/stickers.jpg",
     price: SOL(0.02),
-    description: "Dziesięć winylowych naklejek na laptopa. Odporne na kawę.",
+    description:
+      "Holograficzna naklejka na laptopa. Odporna na kawę i zarysowania.",
   },
 ];
 
@@ -274,46 +269,20 @@ function ProductPage({
 const shopInput =
   "h-10 w-full rounded-md border border-border-low bg-cream px-3 text-sm outline-none placeholder:text-muted focus:border-foreground";
 
-const ART: Record<Kind, string> = {
-  tshirt:
-    "M30 20 L45 12 Q60 22 75 12 L90 20 L104 40 L90 48 L86 42 L86 100 L34 100 L34 42 L30 48 L16 40 Z",
-  hoodie:
-    "M30 24 L46 14 Q60 34 74 14 L90 24 L106 74 L92 78 L86 52 L86 104 L34 104 L34 52 L28 78 L14 74 Z M46 14 Q60 4 74 14 Q60 34 46 14 Z",
-  mug: "M30 30 L82 30 L82 96 Q82 104 74 104 L38 104 Q30 104 30 96 Z M82 44 Q102 44 102 62 Q102 80 82 80 L82 72 Q94 72 94 62 Q94 52 82 52 Z",
-  cap: "M24 78 Q24 34 60 32 Q96 34 96 78 Z M60 78 L108 78 Q108 90 94 90 L60 90 Z",
-  tote: "M26 46 L94 46 L90 106 L30 106 Z M42 46 Q42 18 60 18 Q78 18 78 46 L72 46 Q72 24 60 24 Q48 24 48 46 Z",
-  stickers:
-    "M20 40 a20 20 0 1 0 40 0 a20 20 0 1 0 -40 0 Z M62 28 L100 28 L100 66 L62 66 Z M34 74 L56 110 L12 110 Z M66 76 h34 v30 h-34 Z",
-};
-
-/** Product "photo": a flat illustration on a neutral tile, Medusa-style. */
+/** Product photo on a neutral tile, Medusa-style. */
 function ProductArt({ product, large }: { product: Product; large?: boolean }) {
   return (
     <div
-      className={`flex items-center justify-center overflow-hidden rounded-xl bg-cream ${
-        large ? "aspect-square" : "aspect-[11/14]"
+      className={`overflow-hidden rounded-xl bg-[#f5f5f5] ${
+        large ? "aspect-[4/5]" : "aspect-[11/14]"
       }`}
     >
-      <svg
-        viewBox="0 0 120 120"
-        className={`transition duration-300 ${large ? "w-2/3" : "w-3/5 group-hover:scale-105"}`}
-        role="img"
-        aria-label={product.name}
-      >
-        <path d={ART[product.kind]} fill={product.color} fillRule="evenodd" />
-        {product.kind !== "stickers" && (
-          <text
-            x="60"
-            y={product.kind === "cap" ? 64 : 72}
-            textAnchor="middle"
-            fontSize="10"
-            fontWeight="700"
-            fill="white"
-          >
-            HY26
-          </text>
-        )}
-      </svg>
+      <img
+        src={product.image}
+        alt={product.name}
+        loading="lazy"
+        className={`h-full w-full object-cover transition duration-300 ${large ? "" : "group-hover:scale-105"}`}
+      />
     </div>
   );
 }
