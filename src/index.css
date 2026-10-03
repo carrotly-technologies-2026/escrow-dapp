@@ -13,6 +13,8 @@
   --radius: 0.625rem;
   --font-sans: system-ui, sans-serif;
   --font-mono: ui-monospace, monospace;
+  --brand: #7c3aed;
+  --brand-soft: #ede9fe;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -26,6 +28,8 @@
     --cream: oklch(0.22 0.009 70.82);
     --card: oklch(0.205 0 0);
     --card-foreground: oklch(0.985 0 0);
+    --brand: #a78bfa;
+    --brand-soft: #2e1065;
   }
 }
 
@@ -41,6 +45,8 @@
   --color-muted: var(--muted);
   --color-card: var(--card);
   --color-card-foreground: var(--card-foreground);
+  --color-brand: var(--brand);
+  --color-brand-soft: var(--brand-soft);
   --font-sans: var(--font-sans);
   --font-mono: var(--font-mono);
   --radius-md: calc(var(--radius) - 2px);

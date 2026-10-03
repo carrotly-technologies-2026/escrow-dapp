@@ -50,9 +50,17 @@ anchor deploy --provider.cluster devnet
 solana program set-upgrade-authority 98XjuZZg6GLMZR36ouh2dXtYfDpCp5zLKjtLaSpJGDXj --final
 ```
 
+## Tryb demo (bez Phantoma)
+
+Ustaw `VITE_DEMO_BUYER_KEY`, `VITE_DEMO_SELLER_KEY`, `VITE_DEMO_ARBITER_KEY` (klucze prywatne
+base58 portfeli **tylko devnet**). W prawym górnym rogu pojawi się przełącznik ról
+Kupujący / Sprzedający / Arbiter — aplikacja podpisuje transakcje tymi kluczami, więc całe demo
+robi się w jednej karcie. Klucze trafiają do publicznego bundla JS: nigdy nie używaj portfeli
+z prawdziwymi środkami. Przykładowy list przewozowy: `public/list-przewozowy-demo.pdf`.
+
 ## Demo — scenariusz
 
-1. Kupujący: „Nowa transakcja”, tryb **Demo (minuty)**, wpłata → transakcja w Explorerze.
+1. Kupujący: „Sklep HackYeah” → koszulka → „Kup bezpiecznie przez escrow” (albo „Nowa transakcja”).
 2. Sprzedający: otwiera transakcję, wgrywa list przewozowy → werdykt AI → „Potwierdź wysyłkę”.
 3. Kupujący: „Otrzymałem — zwolnij środki” → środki u sprzedającego.
 4. Wariant ze sporem: kupujący „Otwórz spór” → arbiter w „Panelu arbitra” dzieli środki suwakiem.

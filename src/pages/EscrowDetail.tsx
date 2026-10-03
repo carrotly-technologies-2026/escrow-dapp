@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 import type { Address } from "@solana/kit";
 import {
   EscrowStatus,
@@ -24,10 +24,13 @@ import {
   formatDate,
   formatSol,
   fromHex,
+  shortAddress,
   toHex,
 } from "../lib/escrow";
 import { useEscrowTx } from "../lib/useEscrowTx";
-import { Badge, Button, Card, TxResult } from "../ui";
+import { Badge, Balance, Button, Card, TxResult, type Tone } from "../ui";
+
+type Role = "kupujący" | "sprzedający" | "arbiter";
 
 export function EscrowDetail({ address }: { address: Address }) {
   const [escrow, setEscrow] = useState<Escrow | null | undefined>(undefined);
@@ -48,7 +51,7 @@ export function EscrowDetail({ address }: { address: Address }) {
 
   useEffect(() => {
     reload();
-    const timer = setInterval(reload, 5_000);
+    const timer = setInterval(reload, 4_000);
     return () => clearInterval(timer);
   }, [reload]);
 
@@ -59,7 +62,7 @@ export function EscrowDetail({ address }: { address: Address }) {
     );
 
   const me = tx.signer?.address;
-  const role =
+  const role: Role | null =
     me === escrow.buyer
       ? "kupujący"
       : me === escrow.seller
@@ -68,7 +71,8 @@ export function EscrowDetail({ address }: { address: Address }) {
           ? "arbiter"
           : null;
   const deadline = activeDeadline(escrow);
-  const deadlinePassed = deadline !== null && BigInt(now) > deadline.at;
+  const secondsLeft = deadline ? Number(deadline.at) - now : null;
+  const deadlinePassed = secondsLeft !== null && secondsLeft < 0;
   const committedHash = toHex(new Uint8Array(escrow.waybillHash));
 
   // Every action re-reads the chain afterwards; the program is the source of truth.
@@ -79,108 +83,122 @@ export function EscrowDetail({ address }: { address: Address }) {
     buyer: escrow.buyer,
     seller: escrow.seller,
   };
+  const status = escrow.status;
+  const canDispute =
+    (role === "kupujący" || role === "sprzedający") &&
+    (status === EscrowStatus.Funded || status === EscrowStatus.Shipped) &&
+    !deadlinePassed;
+  const canConfirm =
+    role === "kupujący" &&
+    [EscrowStatus.Funded, EscrowStatus.Shipped, EscrowStatus.Disputed].includes(
+      status
+    );
 
   return (
     <div className="space-y-6">
       <Card
         title={offChain?.details?.itemTitle ?? "Transakcja"}
         aside={
-          <Badge
-            tone={escrow.status === EscrowStatus.Disputed ? "bad" : "neutral"}
-          >
-            {STATUS_LABEL[escrow.status]}
-          </Badge>
+          <span className="text-2xl font-bold tabular-nums">
+            {formatSol(escrow.amount)}
+          </span>
         }
       >
-        <dl className="grid gap-x-6 gap-y-2 text-sm sm:grid-cols-[max-content_1fr]">
-          <dt className="text-muted">Kwota w escrow</dt>
-          <dd className="font-semibold">{formatSol(escrow.amount)}</dd>
-          <dt className="text-muted">Kupujący</dt>
-          <dd className="font-mono text-xs break-all">{escrow.buyer}</dd>
-          <dt className="text-muted">Sprzedający</dt>
-          <dd className="font-mono text-xs break-all">{escrow.seller}</dd>
-          <dt className="text-muted">Arbiter</dt>
-          <dd className="font-mono text-xs break-all">{escrow.arbiter}</dd>
+        <Stepper escrow={escrow} />
+        <div className="grid gap-3 sm:grid-cols-3">
+          <Tile label="Status">
+            <Badge tone={statusTone(status)}>{STATUS_LABEL[status]}</Badge>
+          </Tile>
+          <Tile label="Następny termin">
+            {deadline && secondsLeft !== null ? (
+              <>
+                <span
+                  className={`block text-xl font-bold tabular-nums ${secondsLeft < 60 ? "text-red-600" : ""}`}
+                >
+                  {countdown(secondsLeft)}
+                </span>
+                <span className="text-xs text-muted">{deadline.outcome}</span>
+              </>
+            ) : (
+              <span className="text-sm text-muted">
+                Zakończone — brak terminów
+              </span>
+            )}
+          </Tile>
+          <Tile label="Twoja rola">
+            <span className="block text-xl font-bold capitalize">
+              {role ?? "obserwator"}
+            </span>
+            {!me && (
+              <span className="text-xs text-muted">
+                wybierz rolę w prawym górnym rogu
+              </span>
+            )}
+          </Tile>
+        </div>
+        <div className="grid gap-3 text-sm sm:grid-cols-3">
+          <Party label="Kupujący" address={escrow.buyer} />
+          <Party label="Sprzedający" address={escrow.seller} />
+          <Party label="Arbiter" address={escrow.arbiter} />
+        </div>
+        <p className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted">
           {offChain?.details && (
-            <>
-              <dt className="text-muted">Odbiorca</dt>
-              <dd>
-                {offChain.details.recipientName},{" "}
-                {offChain.details.recipientAddress}
-              </dd>
-            </>
+            <span>
+              Dostawa: {offChain.details.recipientName},{" "}
+              {offChain.details.recipientAddress}
+            </span>
           )}
-          <dt className="text-muted">Założono</dt>
-          <dd>{formatDate(escrow.createdAt)}</dd>
-          {deadline && (
-            <>
-              <dt className="text-muted">Termin</dt>
-              <dd>
-                {formatDate(deadline.at)} (
-                {countdown(Number(deadline.at) - now)}) — {deadline.outcome}
-              </dd>
-            </>
+          <span>Założono: {formatDate(escrow.createdAt)}</span>
+          {status === EscrowStatus.Resolved && (
+            <span>
+              Decyzja arbitra: {escrow.sellerShareBps / 100}% dla sprzedającego
+            </span>
           )}
-          {escrow.status === EscrowStatus.Resolved && (
-            <>
-              <dt className="text-muted">Decyzja arbitra</dt>
-              <dd>{escrow.sellerShareBps / 100}% dla sprzedającego</dd>
-            </>
-          )}
-        </dl>
-        <p className="text-xs text-muted">
-          Twoja rola: <strong>{role ?? "obserwator"}</strong> ·{" "}
           <a
             className="underline"
             href={explorerAddress(address)}
             target="_blank"
             rel="noreferrer"
           >
-            konto escrow w Solana Explorer ↗
+            Konto escrow w Solana Explorer ↗
           </a>
         </p>
       </Card>
 
       {tx.signer && (
         <Card title="Co możesz zrobić">
+          {!role && !deadlinePassed && (
+            <p className="text-sm text-muted">
+              Nie jesteś stroną tej transakcji. Przełącz rolę u góry strony.
+            </p>
+          )}
           <div className="flex flex-wrap gap-3">
-            {role === "kupujący" &&
-              [
-                EscrowStatus.Funded,
-                EscrowStatus.Shipped,
-                EscrowStatus.Disputed,
-              ].includes(escrow.status) && (
-                <Button
-                  disabled={tx.isSending}
-                  onClick={() =>
-                    confirm(
-                      "Potwierdzasz, że przedmiot dotarł i jest zgodny z opisem? Środki trafią do sprzedającego."
-                    ) &&
-                    act((buyer) =>
-                      getConfirmReceivedInstruction({ ...parties, buyer })
-                    )
-                  }
-                >
-                  Otrzymałem — zwolnij środki
-                </Button>
-              )}
-            {(role === "kupujący" || role === "sprzedający") &&
-              [EscrowStatus.Funded, EscrowStatus.Shipped].includes(
-                escrow.status
-              ) &&
-              !deadlinePassed && (
-                <Button
-                  variant="danger"
-                  disabled={tx.isSending}
-                  onClick={() =>
-                    act((party) =>
-                      getOpenDisputeInstruction({ escrow: address, party })
-                    )
-                  }
-                >
-                  Otwórz spór
-                </Button>
-              )}
+            {canConfirm && (
+              <Button
+                variant="success"
+                disabled={tx.isSending}
+                onClick={() =>
+                  act((buyer) =>
+                    getConfirmReceivedInstruction({ ...parties, buyer })
+                  )
+                }
+              >
+                ✓ Otrzymałem — zwolnij środki sprzedającemu
+              </Button>
+            )}
+            {canDispute && (
+              <Button
+                variant="danger"
+                disabled={tx.isSending}
+                onClick={() =>
+                  act((party) =>
+                    getOpenDisputeInstruction({ escrow: address, party })
+                  )
+                }
+              >
+                ⚠ Otwórz spór
+              </Button>
+            )}
             {deadlinePassed && (
               <Button
                 variant="secondary"
@@ -191,12 +209,12 @@ export function EscrowDetail({ address }: { address: Address }) {
                   )
                 }
               >
-                Termin minął — wykonaj: {deadline?.outcome}
+                ⏱ Termin minął — wykonaj: {deadline?.outcome}
               </Button>
             )}
           </div>
           {role === "sprzedający" &&
-            escrow.status === EscrowStatus.Funded &&
+            status === EscrowStatus.Funded &&
             !deadlinePassed && (
               <ShipForm
                 address={address}
@@ -213,7 +231,7 @@ export function EscrowDetail({ address }: { address: Address }) {
               />
             )}
           {role === "arbiter" &&
-            escrow.status === EscrowStatus.Disputed &&
+            status === EscrowStatus.Disputed &&
             !deadlinePassed && (
               <ResolveForm
                 amount={escrow.amount}
@@ -229,6 +247,11 @@ export function EscrowDetail({ address }: { address: Address }) {
                 }
               />
             )}
+          {tx.isSending && (
+            <p className="text-sm text-muted">
+              Wysyłanie transakcji na Solanę…
+            </p>
+          )}
           <TxResult signature={tx.signature} error={tx.error} />
         </Card>
       )}
@@ -239,13 +262,12 @@ export function EscrowDetail({ address }: { address: Address }) {
             Backend niedostępny: {backendError}
           </p>
         )}
-        {escrow.status !== EscrowStatus.Funded &&
-          committedHash !== "0".repeat(64) && (
-            <p className="text-xs text-muted">
-              Sprzedający podpisał na łańcuchu dokument o hashu{" "}
-              <span className="font-mono break-all">{committedHash}</span>
-            </p>
-          )}
+        {status !== EscrowStatus.Funded && committedHash !== "0".repeat(64) && (
+          <p className="text-xs text-muted">
+            Sprzedający podpisał na łańcuchu dokument o hashu{" "}
+            <span className="font-mono break-all">{committedHash}</span>
+          </p>
+        )}
         {offChain?.waybills.length === 0 && (
           <p className="text-sm text-muted">
             Sprzedający nie dodał jeszcze listu przewozowego.
@@ -283,6 +305,92 @@ export function EscrowDetail({ address }: { address: Address }) {
   );
 }
 
+const statusTone = (s: EscrowStatus): Tone =>
+  s === EscrowStatus.Disputed
+    ? "bad"
+    : s === EscrowStatus.Funded || s === EscrowStatus.Shipped
+      ? "warn"
+      : "good";
+
+/** Visual path of the deal; the dispute branch replaces the happy path when taken. */
+function Stepper({ escrow }: { escrow: Escrow }) {
+  const s = escrow.status;
+  const shipped = escrow.confirmDeadline > 0n;
+  const disputed = escrow.disputeDeadline > 0n;
+  const final =
+    s === EscrowStatus.Released
+      ? "Wypłacone sprzedającemu"
+      : s === EscrowStatus.Refunded
+        ? "Zwrócone kupującemu"
+        : s === EscrowStatus.Resolved
+          ? "Rozstrzygnięte przez arbitra"
+          : disputed
+            ? "Decyzja arbitra"
+            : "Odbiór potwierdzony";
+  const settled =
+    s === EscrowStatus.Released ||
+    s === EscrowStatus.Refunded ||
+    s === EscrowStatus.Resolved;
+  const steps = [
+    { label: "Opłacone", done: true },
+    { label: "Wysłane", done: shipped },
+    ...(disputed ? [{ label: "Spór", done: true, alert: true }] : []),
+    { label: final, done: settled },
+  ];
+  return (
+    <ol className="flex items-center gap-2">
+      {steps.map((step, i) => (
+        <li key={step.label} className="flex flex-1 items-center gap-2">
+          <span
+            className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-bold ${
+              step.done
+                ? "alert" in step
+                  ? "bg-red-600 text-white"
+                  : "bg-brand text-white dark:text-neutral-950"
+                : "bg-cream text-muted"
+            }`}
+          >
+            {step.done ? ("alert" in step ? "!" : "✓") : i + 1}
+          </span>
+          <span
+            className={`text-xs sm:text-sm ${step.done ? "font-semibold" : "text-muted"}`}
+          >
+            {step.label}
+          </span>
+          {i < steps.length - 1 && (
+            <span
+              className={`h-0.5 flex-1 rounded ${steps[i + 1].done ? "bg-brand" : "bg-border-low"}`}
+            />
+          )}
+        </li>
+      ))}
+    </ol>
+  );
+}
+
+function Tile({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div className="space-y-1 rounded-xl bg-cream p-4">
+      <p className="text-xs font-medium uppercase tracking-wide text-muted">
+        {label}
+      </p>
+      {children}
+    </div>
+  );
+}
+
+function Party({ label, address }: { label: string; address: Address }) {
+  return (
+    <div className="rounded-xl border border-border-low p-3">
+      <p className="text-xs text-muted">{label}</p>
+      <p className="font-mono text-xs">{shortAddress(address)}</p>
+      <p className="text-sm font-semibold">
+        <Balance address={address} />
+      </p>
+    </div>
+  );
+}
+
 function ShipForm({
   address,
   busy,
@@ -312,17 +420,24 @@ function ShipForm({
   }
 
   return (
-    <div className="space-y-3 border-t border-border-low pt-4">
-      <p className="text-sm font-medium">
-        Nadałeś paczkę? Dodaj list przewozowy (PDF lub zdjęcie).
+    <div className="space-y-3 rounded-xl border border-dashed border-brand/50 p-4">
+      <p className="text-sm font-semibold">
+        📦 Nadałeś paczkę? Dodaj list przewozowy (PDF lub zdjęcie).
       </p>
       <input
         type="file"
         accept="application/pdf,image/jpeg,image/png"
         disabled={uploading}
         onChange={(e) => e.target.files?.[0] && upload(e.target.files[0])}
-        className="text-sm"
+        className="text-sm file:mr-3 file:cursor-pointer file:rounded-lg file:border-0 file:bg-brand-soft file:px-3 file:py-2 file:font-semibold file:text-brand"
       />
+      <p className="text-xs text-muted">
+        Na demo możesz użyć{" "}
+        <a className="underline" href="/list-przewozowy-demo.pdf" download>
+          przykładowego listu przewozowego
+        </a>
+        .
+      </p>
       {uploading && (
         <p className="text-sm text-muted">
           Wysyłanie i sprawdzanie dokumentu przez AI…
@@ -333,7 +448,7 @@ function ShipForm({
         <>
           <ValidationView validation={uploaded.validation} />
           <Button disabled={busy} onClick={() => onCommit(uploaded.hash)}>
-            Potwierdź wysyłkę (podpisz ten dokument)
+            Potwierdź wysyłkę (podpisz ten dokument on-chain)
           </Button>
         </>
       )}
@@ -353,23 +468,31 @@ function ResolveForm({
   const [percent, setPercent] = useState(50);
   const sellerPart = (amount * BigInt(percent * 100)) / 10_000n;
   return (
-    <div className="space-y-3 border-t border-border-low pt-4">
-      <p className="text-sm font-medium">
-        Decyzja arbitra: jaka część trafia do sprzedającego?
+    <div className="space-y-3 rounded-xl border border-dashed border-brand/50 p-4">
+      <p className="text-sm font-semibold">
+        ⚖ Decyzja arbitra: jaka część trafia do sprzedającego?
       </p>
       <input
         type="range"
         min={0}
         max={100}
+        step={5}
         value={percent}
         onChange={(e) => setPercent(Number(e.target.value))}
-        className="w-full"
+        className="w-full accent-brand"
       />
-      <p className="text-sm">
-        Sprzedający: <strong>{percent}%</strong> ({formatSol(sellerPart)}) ·
-        Kupujący: <strong>{100 - percent}%</strong> (
-        {formatSol(amount - sellerPart)})
-      </p>
+      <div className="grid grid-cols-2 gap-3 text-sm">
+        <div className="rounded-lg bg-cream p-3">
+          Kupujący: <strong>{100 - percent}%</strong>
+          <br />
+          {formatSol(amount - sellerPart)}
+        </div>
+        <div className="rounded-lg bg-cream p-3 text-right">
+          Sprzedający: <strong>{percent}%</strong>
+          <br />
+          {formatSol(sellerPart)}
+        </div>
+      </div>
       <Button disabled={busy} onClick={() => onResolve(percent * 100)}>
         Rozstrzygnij spór
       </Button>
@@ -377,10 +500,7 @@ function ResolveForm({
   );
 }
 
-const VERDICT: Record<
-  Validation["verdict"],
-  { label: string; tone: "good" | "warn" | "bad" | "neutral" }
-> = {
+const VERDICT: Record<Validation["verdict"], { label: string; tone: Tone }> = {
   valid: { label: "AI: dokument wiarygodny", tone: "good" },
   suspicious: { label: "AI: dokument podejrzany", tone: "warn" },
   invalid: { label: "AI: dokument nieprawidłowy", tone: "bad" },
@@ -435,14 +555,15 @@ function useNow() {
 }
 
 function countdown(secs: number) {
-  if (secs <= 0) return "minął";
+  if (secs <= 0) return "termin minął";
   const d = Math.floor(secs / 86400);
   const h = Math.floor((secs % 86400) / 3600);
   const m = Math.floor((secs % 3600) / 60);
   const s = secs % 60;
+  const pad = (n: number) => String(n).padStart(2, "0");
   return d > 0
-    ? `za ${d} d ${h} h`
+    ? `${d} d ${h} h`
     : h > 0
-      ? `za ${h} h ${m} min`
-      : `za ${m} min ${s} s`;
+      ? `${h}:${pad(m)}:${pad(s)}`
+      : `${m}:${pad(s)}`;
 }

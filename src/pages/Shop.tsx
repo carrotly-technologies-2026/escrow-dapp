@@ -144,7 +144,8 @@ function Checkout({
     >
       {!signer ? (
         <p className="text-sm text-muted">
-          Podłącz portfel (przycisk u góry), aby złożyć zamówienie.
+          Wybierz rolę „Kupujący” albo podłącz Phantoma (prawy górny róg), aby
+          złożyć zamówienie.
         </p>
       ) : (
         <form className="grid gap-4 sm:grid-cols-2" onSubmit={submit}>

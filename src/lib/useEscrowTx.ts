@@ -1,42 +1,38 @@
-import { useCallback, useMemo, useState } from "react";
-import { createWalletTransactionSigner } from "@solana/client";
-import { useSendTransaction, useWalletConnection } from "@solana/react-hooks";
+import { useCallback, useState } from "react";
 import type { Instruction, TransactionSigner } from "@solana/kit";
+import { useIdentity } from "./identity";
 
-/** Signs and sends program instructions with the connected wallet. */
+/** Signs and sends program instructions as the current identity (Phantom or demo wallet). */
 export function useEscrowTx() {
-  const { wallet } = useWalletConnection();
-  const { send, isSending } = useSendTransaction();
+  const { identity } = useIdentity();
+  const [isSending, setIsSending] = useState(false);
   const [signature, setSignature] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-
-  const signer: TransactionSigner | null = useMemo(
-    () => (wallet ? createWalletTransactionSigner(wallet).signer : null),
-    [wallet]
-  );
 
   const run = useCallback(
     async (
       build: (signer: TransactionSigner) => Instruction | Promise<Instruction>
     ) => {
-      if (!signer) return null;
+      if (!identity) return null;
       setError(null);
       setSignature(null);
+      setIsSending(true);
       try {
-        const ix = await build(signer);
-        const sig = await send({ instructions: [ix] });
+        const sig = await identity.send(await build(identity.signer));
         setSignature(sig);
         return sig;
       } catch (err) {
         console.error(err);
         setError(describeError(err));
         return null;
+      } finally {
+        setIsSending(false);
       }
     },
-    [signer, send]
+    [identity]
   );
 
-  return { run, signer, isSending, signature, error };
+  return { run, signer: identity?.signer ?? null, isSending, signature, error };
 }
 
 // Program error codes (anchor/programs/escrow/src/lib.rs, EscrowError) in user language.
