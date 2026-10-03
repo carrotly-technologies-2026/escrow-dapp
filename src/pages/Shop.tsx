@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { isAddress, type Address } from "@solana/kit";
 import { DEFAULT_ARBITER, SHOP_SELLER } from "../config";
 import { formatSol, LAMPORTS_PER_SOL } from "../lib/escrow";
@@ -121,6 +121,12 @@ function Checkout({
   const [recipientName, setRecipientName] = useState("");
   const [recipientAddress, setRecipientAddress] = useState("");
 
+  const ref = useRef<HTMLDivElement>(null);
+  // The form renders below the catalogue; bring it into view on selection.
+  useEffect(() => {
+    ref.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, []);
+
   const arbiterConfigured = isAddress(DEFAULT_ARBITER);
   const title = size ? `${product.name} (${size})` : product.name;
 
@@ -138,74 +144,78 @@ function Checkout({
   }
 
   return (
-    <Card
-      title={`Zamówienie: ${title}`}
-      aside={<span className="font-semibold">{formatSol(product.price)}</span>}
-    >
-      {!signer ? (
-        <p className="text-sm text-muted">
-          Wybierz rolę „Kupujący” albo podłącz Phantoma (prawy górny róg), aby
-          złożyć zamówienie.
-        </p>
-      ) : (
-        <form className="grid gap-4 sm:grid-cols-2" onSubmit={submit}>
-          {product.sizes && (
-            <Field label="Rozmiar">
-              <select
-                className={inputClass}
-                value={size}
-                onChange={(e) => setSize(e.target.value)}
-              >
-                {product.sizes.map((s) => (
-                  <option key={s}>{s}</option>
-                ))}
-              </select>
-            </Field>
-          )}
-          <Field label="Imię i nazwisko odbiorcy">
-            <input
-              required
-              maxLength={200}
-              className={inputClass}
-              value={recipientName}
-              onChange={(e) => setRecipientName(e.target.value)}
-            />
-          </Field>
-          <Field label="Adres dostawy">
-            <input
-              required
-              maxLength={200}
-              className={inputClass}
-              value={recipientAddress}
-              onChange={(e) => setRecipientAddress(e.target.value)}
-              placeholder="ul. Przykładowa 1, 00-001 Kraków"
-            />
-          </Field>
-          <div className="space-y-2 sm:col-span-2">
-            <Button
-              type="submit"
-              disabled={isSending || !arbiterConfigured}
-              className="w-full"
-            >
-              {isSending
-                ? "Podpisywanie w portfelu…"
-                : `Kup bezpiecznie przez escrow — ${formatSol(product.price)}`}
-            </Button>
-            <p className="text-xs text-muted">
-              Sklep ma 5 min na wysyłkę (inaczej pieniądze wracają do Ciebie), a
-              Ty 5 min na potwierdzenie odbioru albo otwarcie sporu (arbiter ma
-              10 min na decyzję). Terminy skrócone na potrzeby demo.
-            </p>
-            {!arbiterConfigured && (
-              <p className="text-sm text-red-600">
-                Sklep nie ma skonfigurowanego arbitra (VITE_DEFAULT_ARBITER).
-              </p>
+    <div ref={ref} className="scroll-mt-4">
+      <Card
+        title={`Zamówienie: ${title}`}
+        aside={
+          <span className="font-semibold">{formatSol(product.price)}</span>
+        }
+      >
+        {!signer ? (
+          <p className="text-sm text-muted">
+            Wybierz rolę „Kupujący” albo podłącz Phantoma (prawy górny róg), aby
+            złożyć zamówienie.
+          </p>
+        ) : (
+          <form className="grid gap-4 sm:grid-cols-2" onSubmit={submit}>
+            {product.sizes && (
+              <Field label="Rozmiar">
+                <select
+                  className={inputClass}
+                  value={size}
+                  onChange={(e) => setSize(e.target.value)}
+                >
+                  {product.sizes.map((s) => (
+                    <option key={s}>{s}</option>
+                  ))}
+                </select>
+              </Field>
             )}
-          </div>
-        </form>
-      )}
-      <TxResult signature={signature} error={error} />
-    </Card>
+            <Field label="Imię i nazwisko odbiorcy">
+              <input
+                required
+                maxLength={200}
+                className={inputClass}
+                value={recipientName}
+                onChange={(e) => setRecipientName(e.target.value)}
+              />
+            </Field>
+            <Field label="Adres dostawy">
+              <input
+                required
+                maxLength={200}
+                className={inputClass}
+                value={recipientAddress}
+                onChange={(e) => setRecipientAddress(e.target.value)}
+                placeholder="ul. Przykładowa 1, 00-001 Kraków"
+              />
+            </Field>
+            <div className="space-y-2 sm:col-span-2">
+              <Button
+                type="submit"
+                disabled={isSending || !arbiterConfigured}
+                className="w-full"
+              >
+                {isSending
+                  ? "Podpisywanie w portfelu…"
+                  : `Kup bezpiecznie przez escrow — ${formatSol(product.price)}`}
+              </Button>
+              <p className="text-xs text-muted">
+                Sklep ma 5 min na wysyłkę (inaczej pieniądze wracają do Ciebie),
+                a Ty 5 min na potwierdzenie odbioru albo otwarcie sporu (arbiter
+                ma 10 min na decyzję). Terminy skrócone na potrzeby demo.
+              </p>
+              {!arbiterConfigured && (
+                <p className="text-sm text-red-600">
+                  Sklep nie ma skonfigurowanego arbitra (VITE_DEFAULT_ARBITER).
+                </p>
+              )}
+            </div>
+          </form>
+        )}
+        <TxResult signature={signature} error={error} />
+      </Card>
+    </div>
   );
 }
 

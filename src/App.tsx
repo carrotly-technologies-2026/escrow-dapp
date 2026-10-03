@@ -20,7 +20,10 @@ const TABS = [
 function useHash() {
   const [hash, setHash] = useState(() => window.location.hash || "#/");
   useEffect(() => {
-    const onChange = () => setHash(window.location.hash || "#/");
+    const onChange = () => {
+      setHash(window.location.hash || "#/");
+      window.scrollTo(0, 0);
+    };
     window.addEventListener("hashchange", onChange);
     return () => window.removeEventListener("hashchange", onChange);
   }, []);
@@ -38,7 +41,8 @@ export default function App() {
 
   let page;
   if (escrowMatch && isAddress(escrowMatch[1])) {
-    page = <EscrowDetail address={escrowMatch[1]} />;
+    // Keyed so the transaction result of one escrow never shows on another.
+    page = <EscrowDetail key={escrowMatch[1]} address={escrowMatch[1]} />;
   } else if (hash === "#/sklep") {
     // The shop is browsable without a wallet; checkout asks to connect one.
     page = <Shop onOrdered={openEscrow} />;

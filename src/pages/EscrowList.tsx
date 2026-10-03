@@ -3,6 +3,7 @@ import type { Address } from "@solana/kit";
 import { EscrowStatus } from "../generated/escrow";
 import {
   STATUS_LABEL,
+  activeDeadline,
   fetchEscrowsFor,
   formatDate,
   formatSol,
@@ -37,10 +38,12 @@ export function EscrowList({ wallet, role }: { wallet: Address; role: Role }) {
     };
   }, [wallet, role]);
 
-  // Arbiters only care about open disputes.
+  // Arbiters only care about disputes; the ones they can still decide come first.
   const shown =
     role === "arbiter"
-      ? items?.filter((e) => e.data.status === EscrowStatus.Disputed)
+      ? items
+          ?.filter((e) => e.data.status === EscrowStatus.Disputed)
+          .sort((a, b) => Number(isExpired(a.data)) - Number(isExpired(b.data)))
       : items;
 
   return (
@@ -68,21 +71,31 @@ export function EscrowList({ wallet, role }: { wallet: Address; role: Role }) {
                     : `kupujący ${shortAddress(data.buyer)}`}
                 </span>
               </span>
-              <Badge
-                tone={
-                  data.status === EscrowStatus.Disputed
-                    ? "bad"
-                    : isSettled(data.status)
-                      ? "good"
-                      : "warn"
-                }
-              >
-                {STATUS_LABEL[data.status]}
-              </Badge>
+              {isExpired(data) ? (
+                <Badge>Termin minął — {activeDeadline(data)!.outcome}</Badge>
+              ) : (
+                <Badge
+                  tone={
+                    data.status === EscrowStatus.Disputed
+                      ? "bad"
+                      : isSettled(data.status)
+                        ? "good"
+                        : "warn"
+                  }
+                >
+                  {STATUS_LABEL[data.status]}
+                </Badge>
+              )}
             </a>
           </li>
         ))}
       </ul>
     </Card>
   );
+}
+
+/** Past its deadline: only the default outcome (claim_timeout) is still possible. */
+function isExpired(e: EscrowWithAddress["data"]) {
+  const deadline = activeDeadline(e);
+  return deadline !== null && Date.now() / 1000 > Number(deadline.at);
 }

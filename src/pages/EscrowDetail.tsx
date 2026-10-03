@@ -331,16 +331,21 @@ function Stepper({ escrow }: { escrow: Escrow }) {
     s === EscrowStatus.Released ||
     s === EscrowStatus.Refunded ||
     s === EscrowStatus.Resolved;
+  // Skip "Wysłane" when the deal ended or went to dispute before shipping.
+  const showShipped = shipped || (!settled && !disputed);
   const steps = [
     { label: "Opłacone", done: true },
-    { label: "Wysłane", done: shipped },
+    ...(showShipped ? [{ label: "Wysłane", done: shipped }] : []),
     ...(disputed ? [{ label: "Spór", done: true, alert: true }] : []),
     { label: final, done: settled },
   ];
   return (
-    <ol className="flex items-center gap-2">
+    <ol className="flex items-start gap-2">
       {steps.map((step, i) => (
-        <li key={step.label} className="flex flex-1 items-center gap-2">
+        <li
+          key={step.label}
+          className="flex min-w-0 flex-1 flex-col items-center gap-1 text-center sm:flex-row sm:text-left"
+        >
           <span
             className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-bold ${
               step.done
@@ -359,7 +364,7 @@ function Stepper({ escrow }: { escrow: Escrow }) {
           </span>
           {i < steps.length - 1 && (
             <span
-              className={`h-0.5 flex-1 rounded ${steps[i + 1].done ? "bg-brand" : "bg-border-low"}`}
+              className={`hidden h-0.5 flex-1 rounded sm:block ${steps[i + 1].done ? "bg-brand" : "bg-border-low"}`}
             />
           )}
         </li>

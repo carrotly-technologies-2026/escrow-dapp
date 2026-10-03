@@ -106,12 +106,12 @@ export const formatSol = (lamports: bigint) =>
     maximumFractionDigits: 9,
   })} SOL`;
 
-export const parseSol = (sol: string): bigint => {
-  const [whole, frac = ""] = sol.trim().replace(",", ".").split(".");
-  return (
-    BigInt(whole || "0") * LAMPORTS_PER_SOL +
-    BigInt(frac.padEnd(9, "0").slice(0, 9))
-  );
+/** Parses "0,5" / "1.25" into lamports; null for anything that is not a SOL amount. */
+export const parseSol = (sol: string): bigint | null => {
+  const match = /^(\d+)(?:[.,](\d{1,9}))?$/.exec(sol.trim());
+  if (!match) return null;
+  const [, whole, frac = ""] = match;
+  return BigInt(whole) * LAMPORTS_PER_SOL + BigInt(frac.padEnd(9, "0"));
 };
 
 export const formatDate = (unix: bigint) =>

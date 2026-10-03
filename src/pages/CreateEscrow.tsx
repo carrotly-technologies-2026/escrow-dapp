@@ -39,8 +39,8 @@ export function CreateEscrow({
       return;
     }
     const amount = parseSol(form.amount);
-    if (amount <= 0n) {
-      setProblem("Podaj kwotę większą od zera.");
+    if (amount === null || amount <= 0n) {
+      setProblem("Podaj kwotę w SOL większą od zera, np. 0,5.");
       return;
     }
     const escrow = await create({
