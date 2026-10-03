@@ -64,7 +64,7 @@ recipientName + "\n" + recipientAddress)`. Backend przyjmuje opis tylko wtedy, g
   zgadza się z tym na łańcuchu — nie trzeba logowania, a nikt nie podmieni danych odbiorcy.
 - Sprzedający wrzuca list przewozowy do backendu, dostaje jego SHA-256 i podpisuje go w
   `mark_shipped`. Liczy się tylko plik, którego hash jest na łańcuchu.
-- LLM (Claude, obraz/PDF) ocenia, czy dokument wygląda na list przewozowy, wyciąga przewoźnika,
+- LLM (Gemini, obraz/PDF) ocenia, czy dokument wygląda na list przewozowy, wyciąga przewoźnika,
   numer przesyłki, odbiorcę i datę nadania, porównuje z opisem i datą założenia escrow i zwraca
   werdykt `valid` / `suspicious` / `invalid` z uzasadnieniem. **Werdykt niczego nie blokuje** —
   pomaga kupującemu zdecydować i arbitrowi rozstrzygnąć spór.
@@ -78,7 +78,7 @@ recipientName + "\n" + recipientAddress)`. Backend przyjmuje opis tylko wtedy, g
 | `GET /escrows/:address`                | stan z łańcucha + opis + listy przewozowe z walidacją i flagą `committedOnChain`                  |
 | `GET /escrows/:address/waybills/:hash` | plik listu przewozowego                                                                           |
 
-Konfiguracja: `SOLANA_RPC_URL`, `ESCROW_PROGRAM_ID`, `ANTHROPIC_API_KEY`, `DATA_DIR`
+Konfiguracja: `SOLANA_RPC_URL`, `ESCROW_PROGRAM_ID`, `GEMINI_API_KEY`, `DATA_DIR`
 (SQLite `node:sqlite` + pliki; w Coolify na wolumenie).
 
 ## Odpowiedzi na pytania jury
