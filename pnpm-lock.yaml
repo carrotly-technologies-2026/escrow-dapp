@@ -17,6 +17,9 @@ importers:
       '@solana/react-hooks':
         specifier: ^1.1.5
         version: 1.4.1(@solana/sysvars@5.5.1(typescript@5.9.3))(@types/react@19.3.0)(react@19.3.0)(typescript@5.9.3)(use-sync-external-store@1.7.0(react@19.3.0))
+      '@solana/webcrypto-ed25519-polyfill':
+        specifier: ^5.5.1
+        version: 5.5.1(typescript@5.9.3)
       '@tailwindcss/vite':
         specifier: ^4
         version: 4.3.3(vite@7.3.6(@types/node@20.19.43)(jiti@2.7.0)(lightningcss@1.32.0))
@@ -449,6 +452,9 @@ packages:
     cpu: [x64]
     os: [linux]
     libc: [glibc]
+
+  '@noble/ed25519@3.2.0':
+    resolution: {integrity: sha512-criDgRlnUA09hchYrTy/JUWPIEap5rZxQe6wDWzRx51oWWpDRcUpuNzlgPxDJaOK6AsW9c0wKcj3rKRv6t+bPQ==}
 
   '@noble/hashes@2.4.0':
     resolution: {integrity: sha512-X5XaVWZIBCT7HHZGm5I7ZQXDwLG+bGXuSrMQAW+7Zvl87h1kmc1ZB1VSRJcpUfoUrGQp4Fkoxm5kZ+Ms+aW+eA==}
@@ -1041,6 +1047,15 @@ packages:
   '@solana/wallet-standard-features@1.5.0':
     resolution: {integrity: sha512-gxlLaEfPAqbhd3LNkK0Ks2pbVvDm1SDGqBK/ynDQy13Gu+qiURLpRCfSPjbtrw5bmqQsZ6rS2YJHL31bY/Koag==}
     engines: {node: '>=22'}
+
+  '@solana/webcrypto-ed25519-polyfill@5.5.1':
+    resolution: {integrity: sha512-7hzBkMYd6tjYz+gka4aXNUbvC4KveQ++Is1QROLWlra0PyhOxqp0skhzlEt0NAsEQlrlHKdUNer2MTqGtFLLPg==}
+    engines: {node: '>=20.18.0'}
+    peerDependencies:
+      typescript: ^5.0.0
+    peerDependenciesMeta:
+      typescript:
+        optional: true
 
   '@tailwindcss/node@4.3.3':
     resolution: {integrity: sha512-/T8IKEsf9VTU6tLjgC7+sv2mOPtQxzE2jMw7u4Tt40Tx+QSZxpzh95/H6cMKoja9XuW7iMdLJYBB0o9G1CaAgg==}
@@ -2391,6 +2406,8 @@ snapshots:
   '@napi-rs/lzma-linux-x64-gnu@1.5.1':
     optional: true
 
+  '@noble/ed25519@3.2.0': {}
+
   '@noble/hashes@2.4.0': {}
 
   '@rolldown/pluginutils@1.0.0-rc.3': {}
@@ -3007,6 +3024,12 @@ snapshots:
     dependencies:
       '@wallet-standard/base': 1.1.1
       '@wallet-standard/features': 1.1.1
+
+  '@solana/webcrypto-ed25519-polyfill@5.5.1(typescript@5.9.3)':
+    dependencies:
+      '@noble/ed25519': 3.2.0
+    optionalDependencies:
+      typescript: 5.9.3
 
   '@tailwindcss/node@4.3.3':
     dependencies:
