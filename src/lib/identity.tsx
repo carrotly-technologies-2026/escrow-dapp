@@ -123,7 +123,13 @@ export function IdentityProvider({ children }: PropsWithChildren) {
     }
   }, []);
 
+  // Without a connected wallet there is nothing to act as, so fall back to the
+  // demo buyer: the app is usable straight away, no extension needed.
+  const activeRole: DemoRole | null =
+    demoRole ?? (!wallet && demoSigners.buyer ? "buyer" : null);
+
   const identity = useMemo<Identity | null>(() => {
+    const demoRole = activeRole;
     const demoSigner = demoRole ? demoSigners[demoRole] : undefined;
     if (demoRole && demoSigner) {
       return {
@@ -145,16 +151,16 @@ export function IdentityProvider({ children }: PropsWithChildren) {
       };
     }
     return null;
-  }, [demoRole, demoSigners, wallet, send]);
+  }, [activeRole, demoSigners, wallet, send]);
 
   const value = useMemo(
     () => ({
       identity,
       demoRoles: Object.keys(DEMO_KEYS) as DemoRole[],
-      demoRole,
+      demoRole: activeRole,
       setDemoRole,
     }),
-    [identity, demoRole, setDemoRole]
+    [identity, activeRole, setDemoRole]
   );
   return (
     <IdentityContext.Provider value={value}>
