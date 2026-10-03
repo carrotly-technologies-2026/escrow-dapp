@@ -193,8 +193,8 @@ function Checkout({
             </Button>
             <p className="text-xs text-muted">
               Sklep ma 5 min na wysyłkę (inaczej pieniądze wracają do Ciebie), a
-              Ty 3 min na potwierdzenie odbioru albo otwarcie sporu. Terminy
-              skrócone na potrzeby demo.
+              Ty 5 min na potwierdzenie odbioru albo otwarcie sporu (arbiter ma
+              10 min na decyzję). Terminy skrócone na potrzeby demo.
             </p>
             {!arbiterConfigured && (
               <p className="text-sm text-red-600">

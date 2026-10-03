@@ -13,8 +13,8 @@ export const PRESETS = {
   demo: {
     label: "Demo (minuty)",
     ship: 5 * MIN,
-    confirm: 3 * MIN,
-    arbiter: 3 * MIN,
+    confirm: 5 * MIN,
+    arbiter: 10 * MIN,
   },
   normal: {
     label: "Standard (dni)",
@@ -69,15 +69,27 @@ export function useCreateEscrow() {
       if (!sig) return null;
 
       // The escrow is already live on-chain; the description is only a convenience copy.
-      try {
-        await saveDetails(escrow, details);
-      } catch (err) {
-        console.error(err);
-      }
+      await saveDetailsWhenVisible(escrow, details);
       return escrow;
     },
     [run, signer]
   );
 
   return { ...tx, create };
+}
+
+/**
+ * The backend only accepts details once it can read the new escrow on-chain, which
+ * can lag a second or two behind the wallet's confirmation, so retry for a while.
+ */
+async function saveDetailsWhenVisible(escrow: Address, details: Details) {
+  for (let attempt = 0; attempt < 15; attempt++) {
+    try {
+      await saveDetails(escrow, details);
+      return;
+    } catch (err) {
+      if (attempt === 14) console.error("Could not save escrow details", err);
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+    }
+  }
 }
