@@ -49,18 +49,51 @@ const PROGRAM_ERRORS: Record<number, string> = {
 };
 
 function describeError(err: unknown): string {
-  const code = findCustomCode(err);
-  if (code !== null && PROGRAM_ERRORS[code]) return PROGRAM_ERRORS[code];
-  return err instanceof Error ? err.message : String(err);
+  const chain = errorChain(err);
+  for (const e of chain) {
+    const code = e.context?.code;
+    if (typeof code === "number" && PROGRAM_ERRORS[code])
+      return PROGRAM_ERRORS[code];
+  }
+  const text = chain
+    .map((e) => `${e.message ?? ""} ${(e.context?.logs ?? []).join(" ")}`)
+    .join(" ");
+  if (/insufficient (funds|lamports)/i.test(text))
+    return "Za mało SOL na portfelu, aby wykonać transakcję.";
+  if (/reject|denied|cancel/i.test(text))
+    return "Transakcja odrzucona w portfelu.";
+  // Production bundles strip kit's messages to bare codes; show the innermost error.
+  const innermost = chain[chain.length - 1];
+  return innermost?.message ?? String(err);
 }
 
-/** Program errors arrive as nested SolanaErrors with `context.code`. */
-function findCustomCode(err: unknown): number | null {
-  let cur: unknown = err;
-  for (let i = 0; i < 6 && cur && typeof cur === "object"; i++) {
-    const ctx = (cur as { context?: { code?: unknown } }).context;
-    if (typeof ctx?.code === "number") return ctx.code;
-    cur = (cur as { cause?: unknown }).cause;
-  }
-  return null;
+type ErrorLike = {
+  message?: string;
+  context?: { code?: unknown; logs?: string[] };
+};
+
+/**
+ * Flattens nested kit errors: the real cause (program error, simulation failure,
+ * wallet rejection) sits inside `cause` or the failed transaction plan result.
+ */
+function errorChain(err: unknown): ErrorLike[] {
+  const out: ErrorLike[] = [];
+  const seen = new Set<unknown>();
+  const visit = (e: unknown, depth: number) => {
+    if (!e || typeof e !== "object" || seen.has(e) || depth > 10) return;
+    seen.add(e);
+    const obj = e as Record<string, unknown> & ErrorLike;
+    if (typeof obj.message === "string") out.push(obj);
+    const ctx = obj.context as Record<string, unknown> | undefined;
+    for (const next of [
+      obj.cause,
+      obj.error,
+      obj.status,
+      ctx?.transactionPlanResult,
+      ...(Array.isArray(obj.plans) ? obj.plans : []),
+    ])
+      visit(next, depth + 1);
+  };
+  visit(err, 0);
+  return out;
 }

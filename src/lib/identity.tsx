@@ -134,11 +134,14 @@ export function IdentityProvider({ children }: PropsWithChildren) {
       };
     }
     if (wallet) {
+      // The same signer object must sign the instruction and pay the fee; two distinct
+      // signer objects for one address make kit reject the transaction.
+      const signer = createWalletTransactionSigner(wallet).signer;
       return {
         address: wallet.account.address,
-        signer: createWalletTransactionSigner(wallet).signer,
+        signer,
         demoRole: null,
-        send: (ix) => send({ instructions: [ix] }),
+        send: (ix) => send({ instructions: [ix], authority: signer }),
       };
     }
     return null;
