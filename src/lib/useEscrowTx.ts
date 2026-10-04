@@ -58,6 +58,13 @@ function describeError(err: unknown): string {
   const text = chain
     .map((e) => `${e.message ?? ""} ${(e.context?.logs ?? []).join(" ")}`)
     .join(" ");
+  if (
+    chain.some(
+      (e) =>
+        (e.context as { statusCode?: number } | undefined)?.statusCode === 429
+    )
+  )
+    return "Sieć Solana devnet jest chwilowo przeciążona (limit zapytań). Spróbuj ponownie za kilka sekund.";
   if (/insufficient (funds|lamports)/i.test(text))
     return "Za mało SOL na portfelu, aby wykonać transakcję.";
   if (/reject|denied|cancel/i.test(text))

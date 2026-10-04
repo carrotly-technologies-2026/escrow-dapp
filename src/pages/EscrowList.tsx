@@ -31,7 +31,7 @@ export function EscrowList({ wallet, role }: { wallet: Address; role: Role }) {
         .then((list) => alive && setItems(list))
         .catch((err) => alive && setError(String(err)));
     load();
-    const timer = setInterval(load, 10_000);
+    const timer = setInterval(load, 30_000);
     return () => {
       alive = false;
       clearInterval(timer);

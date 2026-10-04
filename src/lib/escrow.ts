@@ -1,5 +1,7 @@
 import {
-  createSolanaRpc,
+  createDefaultRpcTransport,
+  createSolanaRpcFromTransport,
+  devnet,
   getBase64Encoder,
   type Address,
   type Base58EncodedBytes,
@@ -14,7 +16,28 @@ import {
 } from "../generated/escrow";
 import { RPC_URL } from "../config";
 
-export const rpc = createSolanaRpc(RPC_URL);
+const baseTransport = createDefaultRpcTransport({ url: devnet(RPC_URL) });
+
+/**
+ * The public devnet RPC rate-limits bursts with HTTP 429; back off and retry
+ * instead of failing the user's action or a page refresh.
+ */
+const retryingTransport = (async (
+  ...args: Parameters<typeof baseTransport>
+) => {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await baseTransport(...args);
+    } catch (err) {
+      const status = (err as { context?: { statusCode?: number } }).context
+        ?.statusCode;
+      if (status !== 429 || attempt >= 4) throw err;
+      await new Promise((r) => setTimeout(r, 600 * 2 ** attempt));
+    }
+  }
+}) as typeof baseTransport;
+
+export const rpc = createSolanaRpcFromTransport(retryingTransport);
 export const LAMPORTS_PER_SOL = 1_000_000_000n;
 
 export type EscrowWithAddress = { address: Address; data: Escrow };

@@ -51,7 +51,7 @@ export function EscrowDetail({ address }: { address: Address }) {
 
   useEffect(() => {
     reload();
-    const timer = setInterval(reload, 4_000);
+    const timer = setInterval(reload, 10_000);
     return () => clearInterval(timer);
   }, [reload]);
 

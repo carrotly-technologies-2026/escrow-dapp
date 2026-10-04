@@ -12,7 +12,6 @@ import { useSendTransaction, useWalletConnection } from "@solana/react-hooks";
 import {
   appendTransactionMessageInstruction,
   createKeyPairSignerFromBytes,
-  createSolanaRpc,
   createSolanaRpcSubscriptions,
   createTransactionMessage,
   devnet,
@@ -29,6 +28,7 @@ import {
   type TransactionSigner,
 } from "@solana/kit";
 import { RPC_URL } from "../config";
+import { rpc } from "./escrow";
 
 export type DemoRole = "buyer" | "seller" | "arbiter";
 
@@ -67,8 +67,6 @@ const DEMO_KEYS: Partial<Record<DemoRole, string>> = Object.fromEntries(
   ).filter(([, key]) => key)
 );
 
-// Typed as devnet so kit's send-and-confirm accepts it; the app only targets devnet.
-const rpc = createSolanaRpc(devnet(RPC_URL));
 const rpcSubscriptions = createSolanaRpcSubscriptions(
   devnet(RPC_URL.replace(/^http/, "ws"))
 );

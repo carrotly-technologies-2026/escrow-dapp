@@ -119,14 +119,16 @@ export function useBalance(address: Address | undefined) {
   useEffect(() => {
     if (!address) return setLamports(null);
     let alive = true;
+    // Hidden tabs don't need fresh balances; this keeps us under the RPC rate limit.
     const load = () =>
+      !document.hidden &&
       rpc
         .getBalance(address)
         .send()
         .then(({ value }) => alive && setLamports(value))
         .catch(() => {});
     load();
-    const timer = setInterval(load, 4_000);
+    const timer = setInterval(load, 15_000);
     return () => {
       alive = false;
       clearInterval(timer);
