@@ -69,10 +69,10 @@ export default function App() {
             <Logo />
             <span>
               <span className="block text-xl font-bold tracking-tight">
-                Bezpieczna Paczka
+                Handshake
               </span>
               <span className="block text-xs text-muted">
-                escrow na Solanie · devnet
+                strona demo systemu escrow · Solana devnet
               </span>
             </span>
           </a>
